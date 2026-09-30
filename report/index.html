@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>App review · Walkwren (demo)</title>
+<meta name="description" content="A review of a booking app built with an AI app builder on Supabase: ten problems, seven reproduced on a real PostgreSQL database and three found in the code, each fixed and checked again.">
+<meta name="color-scheme" content="light dark">
+<style>
+  :root {
+    --bg: #f6f6f3; --panel: #ffffff; --ink: #16171a; --muted: #62656b; --line: #e3e2dc; --soft: #efeee9;
+    --accent: #3346c4; --accent-ink: #ffffff; --accent-soft: #e8ebfb;
+    --bad: #b42318; --bad-soft: #fdecea; --good: #1e7a4c; --good-soft: #e5f4ec; --warn: #9a5b00; --warn-soft: #fbf1df;
+    --radius: 14px; --shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 28px rgba(0,0,0,.05);
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111214; --panel: #1a1b1e; --ink: #ecebe7; --muted: #a0a2a8; --line: #2c2d32; --soft: #232428;
+      --accent: #8d9bff; --accent-ink: #0f1330; --accent-soft: #232845;
+      --bad: #ff8a80; --bad-soft: #3a1f1d; --good: #6fd3a0; --good-soft: #1b3127; --warn: #f3b760; --warn-soft: #36291a;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 28px rgba(0,0,0,.25);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #111214; --panel: #1a1b1e; --ink: #ecebe7; --muted: #a0a2a8; --line: #2c2d32; --soft: #232428;
+    --accent: #8d9bff; --accent-ink: #0f1330; --accent-soft: #232845;
+    --bad: #ff8a80; --bad-soft: #3a1f1d; --good: #6fd3a0; --good-soft: #1b3127; --warn: #f3b760; --warn-soft: #36291a;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 28px rgba(0,0,0,.25);
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.55 var(--font); }
+  a { color: var(--accent); }
+  button { font: inherit; color: inherit; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+  header.top { display: flex; align-items: center; justify-content: space-between; padding: 18px 0; }
+  .brand { font-weight: 650; display: flex; gap: 10px; align-items: center; }
+  .brand i { width: 22px; height: 22px; border-radius: 6px; background: var(--accent); display: inline-block; }
+  .theme { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 6px 12px; cursor: pointer; font-size: 14px; }
+  .hero { padding: 40px 0 8px; }
+  .hero h1 { font-size: clamp(32px, 5vw, 52px); line-height: 1.08; letter-spacing: -.025em; margin: 0 0 16px; max-width: 18ch; }
+  .hero p { font-size: 19px; color: var(--muted); max-width: 62ch; margin: 0; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 32px 0 8px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; }
+  .stat .n { font-size: 34px; font-weight: 700; letter-spacing: -.02em; }
+  .stat .l { font-size: 14px; color: var(--muted); }
+  .stat.bad .n { color: var(--bad); } .stat.good .n { color: var(--good); }
+  section.block { padding: 56px 0; }
+  section.block + section.block { border-top: 1px solid var(--line); }
+  section.block h2 { font-size: clamp(26px, 3.4vw, 34px); letter-spacing: -.02em; line-height: 1.15; margin: 0 0 10px; }
+  section.block > .wrap > p.lead { color: var(--muted); font-size: 18px; max-width: 64ch; margin: 0 0 26px; }
+  .finding { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px; margin-bottom: 16px; }
+  .fh { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+  .fid { font: 600 13px var(--mono); color: var(--muted); }
+  .sev { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; letter-spacing: .04em; }
+  .sev.critical { background: var(--bad-soft); color: var(--bad); }
+  .sev.high { background: var(--warn-soft); color: var(--warn); }
+  .sev.medium { background: var(--soft); color: var(--muted); }
+  .finding h3 { font-size: 20px; margin: 0; letter-spacing: -.01em; flex: 1 1 320px; }
+  .finding .why { color: var(--muted); margin: 8px 0 14px; max-width: 70ch; }
+  .runs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .run { border-radius: 10px; padding: 10px 12px; font-size: 14.5px; }
+  .run b { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 2px; }
+  .run.through { background: var(--bad-soft); } .run.through b { color: var(--bad); }
+  .run.blocked { background: var(--good-soft); } .run.blocked b { color: var(--good); }
+  .attack { font-size: 14.5px; margin: 0 0 8px; }
+  details.fix summary { cursor: pointer; color: var(--accent); font-weight: 600; font-size: 15px; }
+  pre { background: var(--soft); border-radius: 10px; padding: 12px 14px; overflow-x: auto; font: 13px/1.5 var(--mono); margin: 10px 0 0; white-space: pre; }
+  .works { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; }
+  .works li::before { content: '✓ '; color: var(--good); font-weight: 700; }
+  .works li.no::before { content: '✗ '; color: var(--bad); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
+  .card h3 { margin: 0 0 6px; font-size: 17px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+  .method { color: var(--muted); max-width: 70ch; }
+  .method code { font: 13.5px var(--mono); background: var(--soft); padding: 1px 5px; border-radius: 4px; color: var(--ink); }
+  footer { padding: 36px 0 60px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); }
+  .reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
+  @media (max-width: 820px) { .stats { grid-template-columns: 1fr 1fr; } .runs, .works, .grid2 { grid-template-columns: 1fr; } }
+  @media (max-width: 560px) { .wrap { padding: 0 16px; } .hero p { font-size: 17px; } .finding { padding: 16px; } .stat .n { font-size: 28px; } }
+</style>
+</head>
+<body>
+
+<!-- flowlab-band -->
+<style>.fl-band{margin:0;max-width:none;box-sizing:border-box;padding:.5rem 1rem;background:#15171c;color:#f1f1ec;font:500 .875rem/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;text-align:center;position:relative;z-index:10}
+.fl-band a{color:#fff;text-decoration:underline;text-underline-offset:2px}
+.fl-band a:focus-visible{outline:2px solid #9db2ff;outline-offset:2px;border-radius:2px}
+.fl-band__more{white-space:nowrap}</style>
+<p class="fl-band" role="note">Self-initiated demo by <a href="https://flowlab-dev.github.io/work/app-rescue/">Flow Lab</a>. Walkwren and Kettleby Dog Walks are invented.</p>
+<!-- /flowlab-band -->
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><i aria-hidden="true"></i>Walkwren · app review</div>
+    <button class="theme" id="theme" type="button" aria-label="Switch colour theme">Dark</button>
+  </header>
+  <div class="hero">
+    <h1>Built in a weekend with an AI app builder. Checked before it goes wrong.</h1>
+    <p>Kettleby Dog Walks booked walks through Walkwren, a React and Supabase app made with an AI app builder. It worked, and it also let anyone read every customer’s home address. This is the review: ten problems, seven reproduced on a real PostgreSQL database and three found in the code. Each one was fixed and checked again.</p>
+    <div class="stats" id="stats"></div>
+  </div>
+</div>
+
+<section class="block">
+  <div class="wrap">
+    <h2>What we found and fixed</h2>
+    <p class="lead">Each finding says who could do what, shows what happened when the attack was tried before and after the fix, and shows the fix itself.</p>
+    <div id="findings"></div>
+  </div>
+</section>
+
+<section class="block">
+  <div class="wrap reveal">
+    <h2>Still works for the right people</h2>
+    <p class="lead">Locking things down is easy if you break the app. These actions were run on the fixed database as the people who need them, and the fix was also run on data the old app could have produced.</p>
+    <ul class="works" id="works"></ul>
+    <p class="method" style="margin-top:22px">The fix also leaves the owner a list of bookings that suggest the old holes were already used: a price that differs from the price list, or a booking filed under someone else’s customer record. Only the server and the Supabase dashboard can read it.</p>
+    <p class="method">Left for the owner to decide: how late a walk can be cancelled, the hours bookings are open, whether 10 upcoming walks per customer is the right limit, and whether edits other than cancelling should be possible in the app. For now those go through the Supabase dashboard.</p>
+  </div>
+</section>
+
+<section class="block">
+  <div class="wrap reveal">
+    <h2>How it was checked</h2>
+    <p class="method" id="method">The database checks run on real PostgreSQL (<span id="engine">PostgreSQL</span>, in memory). Supabase’s <code>anon</code>, <code>authenticated</code> and <code>service_role</code> roles, its default grants on new tables and its <code>auth.uid()</code> and <code>auth.jwt()</code> functions are recreated, so the row level security rules apply as they would behind Supabase. The HTTP layer (PostgREST) is not recreated, and the test database has one connection, so the “one booking at a time” lock is checked as a rule, not under a real race. “Before” is the generated migration. “After” is the same database with the fix migration applied on top of existing rows, which is how it would ship. If the old data holds something the fix can’t convert safely, such as a slot typed as “tomorrow 10am”, a date that doesn’t exist, or a walker already booked for two walks at once, the migration stops, names the rows and changes nothing. The three frontend findings (F2, F8, F9) are checked by reading the code, not by running the app. Walkwren and Kettleby Dog Walks are invented, and the “before” code was written for this demo to show problems that are common in generated Supabase apps.</p>
+  </div>
+</section>
+
+<section class="block">
+  <div class="wrap reveal">
+    <h2>What a rescue project includes</h2>
+    <div class="grid2">
+      <div class="card"><h3>1 · Review</h3><p>Read the code and the Supabase setup, try every finding as an attack, and send a report like this one. You decide what to fix.</p></div>
+      <div class="card"><h3>2 · Fix, with proof</h3><p>Fix migrations that keep your data, code changes, and the attack suite re-run until nothing gets through and the app still works.</p></div>
+      <div class="card"><h3>3 · Keys and launch</h3><p>Rotate any key that leaked, move server-only work to edge functions, and deploy with you watching.</p></div>
+      <div class="card"><h3>Monthly</h3><p>The app builder keeps generating code. Each month the attack suite runs again on what changed, and new findings go into a short report.</p></div>
+    </div>
+  </div>
+</section>
+
+<footer><div class="wrap">Walkwren and Kettleby Dog Walks are invented; the customers in the test data are made up and their phone numbers are from the range Ofcom keeps for fiction. The schema, fixes and tests are real and run as described.</div></footer>
+
+<script src="results.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var root = document.documentElement;
+  try { var saved = localStorage.getItem('walkwren-theme'); if (saved) root.setAttribute('data-theme', saved); } catch (e) {}
+  function label() {
+    var dark = root.getAttribute('data-theme') ? root.getAttribute('data-theme') === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    $('theme').textContent = dark ? 'Light' : 'Dark';
+  }
+  $('theme').addEventListener('click', function () {
+    var dark = root.getAttribute('data-theme') ? root.getAttribute('data-theme') === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    var next = dark ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('walkwren-theme', next); } catch (e) {}
+    label();
+  });
+  label();
+
+  var F = {
+    F1: { sev: 'critical', title: 'Customer records were open to anyone', why: 'The customers table had no row level security and was granted to the public key, which every visitor’s browser holds. Names, phone numbers and home addresses of everyone who booked a walk could be read, and changed, without signing in.',
+      fix: "revoke all on public.customers from anon;\nalter table public.customers enable row level security;\ncreate policy \"customer reads own record\" on public.customers\n  for select to authenticated using (user_id = (select auth.uid()));" },
+    F2: { sev: 'critical', title: 'The service key was shipped to the browser', why: 'The admin page used the service role key, which skips every database rule. Vite hands every VITE_… variable to browser code, and this one was used there, so it sat in the public JavaScript for anyone to copy. Removing it is not enough: the key has to be replaced (switching to the new secret keys, or rotating the JWT secret, which also signs everyone out), and the user list checked for anyone who gave themselves admin rights with it.',
+      fix: "- const serviceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;\n- export const supabaseAdmin = createClient(url, serviceKey);\n+ // Only the public key reaches the browser; the service key was rotated\n+ // and lives only in server-side code." },
+    F3: { sev: 'critical', title: 'The browser decided the price', why: 'The booking form sent the price with the booking, and the database stored whatever arrived. A customer could book any walk for £0. Bookings now go through one database function that takes the price from the price list (which F10 locks down).',
+      fix: "revoke insert on public.bookings from authenticated;\ncreate function public.book_walk(p_walker uuid, p_walk_type text, p_slot timestamptz)\n  ... security definer set search_path = '' ...\n  select * into v_type from public.walk_types where id = p_walk_type;\n  insert into public.bookings (..., price_pence) values (..., v_type.price_pence);" },
+    F4: { sev: 'high', title: 'Anyone could make themselves admin', why: 'The “admin sees all bookings” rule read the role from user_metadata. Every signed-in user can edit their own user_metadata from the browser. The role now comes from app_metadata, which only the server can set.',
+      fix: "- using ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin')\n+ using ((select public.is_admin()))   -- reads app_metadata.role" },
+    F5: { sev: 'high', title: 'Bookings could be changed by the wrong person', why: 'Any customer could change every column of their own bookings, the price included, and could file a booking under another customer’s name and address. With F4 on top, they could also cancel or reprice other people’s walks. Now the browser can only change a booking’s status: customers can cancel their own, and the owner can set any status. Other edits go through the Supabase dashboard.',
+      fix: "revoke insert, update, delete, truncate on public.bookings from authenticated;\ngrant update (status) on public.bookings to authenticated;\ncreate policy \"customer cancels own booking\" on public.bookings for update to authenticated\n  using (user_id = (select auth.uid()))\n  with check (user_id = (select auth.uid()) and status = 'cancelled');\ncreate policy \"owner sets any status\" on public.bookings for update to authenticated\n  using ((select public.is_admin())) with check ((select public.is_admin()));" },
+    F6: { sev: 'high', title: 'A walker booked for two solo walks at once', why: 'Nothing stopped two customers booking the same walker for the same time, or for walks that overlap (12:00 for an hour, then 12:15). The app showed both as confirmed. Now a solo walk may not overlap anything else for that walker; a group walk takes up to four dogs at the same start time. Slots must be whole quarter hours up to a year ahead, one customer can hold up to 10 upcoming walks, and bookings for one walker are taken one at a time, so two people pressing “Book” together can’t both win.',
+      fix: "perform pg_advisory_xact_lock(hashtextextended(p_walker::text, 0));\nif exists (select 1 from public.bookings b join public.walk_types t on t.id = b.walk_type\n  where b.walker_id = p_walker and b.status <> 'cancelled'\n    and tstzrange(b.slot, b.slot + make_interval(mins => t.duration_min)) && tstzrange(p_slot, v_end)\n    and not (v_type.max_dogs > 1 and b.walk_type = p_walk_type and b.slot = p_slot))\n  or (/* group walk already has max_dogs */) then\n  raise exception 'that slot has just been taken' using errcode = '23505';" },
+    F7: { sev: 'medium', title: 'Times were text: 10:00 came before 9:00', why: 'Slots were saved as the text typed in the form. Sorting put 10:00 before 9:00. With no time zone, any code that compares or converts them, such as reminders or the owner’s calendar, has to guess whether 9:00 means summer or winter time.',
+      fix: "alter table public.bookings\n  alter column slot type timestamptz using (slot::timestamp at time zone 'Europe/London');" },
+    F8: { sev: 'medium', title: '“Booked!” even when the booking failed', why: 'The form never looked at the result of the save, so customers were told they had a walk that did not exist.',
+      fix: "const { error } = await supabase.rpc('book_walk', { ... });\nif (error) {\n  toast(error.code === '23505' ? 'Sorry, that slot has just been taken.' : error.message, 'error');\n  return;\n}" },
+    F10: { sev: 'critical', title: 'Anyone could change the price list', why: 'The price list and the walkers table had no row level security, and Supabase opens every new table to the public key. Anyone could set a walk’s price to 1p for everyone, add walkers, or switch them all off so nobody could book. Now everyone can read both tables and only the server can change them.',
+      fix: "alter table public.walk_types enable row level security;\nalter table public.walkers enable row level security;\nrevoke insert, update, delete, truncate on public.walk_types, public.walkers from anon, authenticated;\ncreate policy \"everyone reads the price list\" on public.walk_types for select to anon, authenticated using (true);" },
+    F9: { sev: 'medium', title: 'One request per walk', why: 'The “my walks” list fetched each walker’s name separately: 1 + N requests, slow on a phone signal. Now it is one request.',
+      fix: "- for (const b of data) { await supabase.from('walkers')... }\n+ supabase.from('bookings').select('id, slot, status, walkers(name)')" },
+  };
+
+  var R = window.RESULTS || { results: [], works: [] };
+  var by = {};
+  R.results.forEach(function (r) { (by[r.id] = by[r.id] || []).push(r); });
+  var before = R.results.filter(function (r) { return r.before.through; }).length;
+  var after = R.results.filter(function (r) { return r.after.through; }).length;
+  var ok = R.works.filter(function (w) { return w.ok; }).length;
+  $('stats').innerHTML = [
+    ['bad', before + '/' + R.results.length, 'checks that showed a problem before the fixes'],
+    ['good', after, 'that still show one after them'],
+    ['good', ok + '/' + R.works.length, 'things that must keep working, still working'],
+    ['', Object.keys(F).length, 'findings, ' + Object.keys(F).filter(function (k) { return F[k].sev === 'critical'; }).length + ' of them critical'],
+  ].map(function (s) { return '<div class="stat ' + s[0] + '"><div class="n">' + s[1] + '</div><div class="l">' + s[2] + '</div></div>'; }).join('');
+
+  var ids = Object.keys(F).sort(function (a, b) { return a.slice(1) - b.slice(1); });
+  $('findings').innerHTML = ids.map(function (id) {
+    var f = F[id];
+    var runs = (by[id] || []).map(function (r) {
+      var cell = function (x, when) { return '<div class="run ' + (x.through ? 'through' : 'blocked') + '"><b>' + when + ' · ' + (x.through ? 'problem reproduced' : 'problem gone') + '</b>' + esc(x.detail) + '</div>'; };
+      var who = r.who.charAt(0).toUpperCase() + r.who.slice(1);
+      return '<p class="attack"><b>' + esc(who) + '</b> → ' + esc(r.what) + (r.kind === 'code' ? ' <span class="fid">(checked in the code)</span>' : '') + '</p>' +
+        '<div class="runs">' + cell(r.before, 'Before') + cell(r.after, 'After') + '</div>';
+    }).join('');
+    return '<article class="finding reveal"><div class="fh"><span class="fid">' + id + '</span><span class="sev ' + f.sev + '">' + f.sev + '</span><h3>' + esc(f.title) + '</h3></div>' +
+      '<p class="why">' + esc(f.why) + '</p>' + runs + '<details class="fix"><summary>The fix</summary><pre>' + esc(f.fix) + '</pre></details></article>';
+  }).join('');
+
+  $('works').innerHTML = R.works.map(function (w) { return '<li class="' + (w.ok ? '' : 'no') + '">' + esc(w.name) + '</li>'; }).join('');
+  if (R.engine) $('engine').textContent = R.engine;
+
+  var els = document.querySelectorAll('.reveal');
+  if ('IntersectionObserver' in window && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    var io = new IntersectionObserver(function (es) { es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }); }, { threshold: 0.08 });
+    els.forEach(function (el) { io.observe(el); });
+  } else { els.forEach(function (el) { el.classList.add('in'); }); }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "app-rescue-demo",
+  "private": true,
+  "type": "module",
+  "description": "Review and rescue of an AI-builder app (React + Supabase): every finding as an attack test on real PostgreSQL.",
+  "scripts": { "test": "node tests/attacks.mjs" },
+  "devDependencies": { "@electric-sql/pglite": "^0.5.8" },
+  "license": "MIT"
+}
